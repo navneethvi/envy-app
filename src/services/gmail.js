@@ -51,7 +51,31 @@ async function handleCallback(code) {
 
 async function getStatus() {
   const tok = await GmailToken.findOne();
-  return tok ? { connected: true, email: tok.email, connectedAt: tok.connectedAt } : { connected: false };
+  if (!tok) return { connected: false };
+  return {
+    connected: true,
+    email: tok.email,
+    connectedAt: tok.connectedAt,
+    lastSyncAt: tok.lastSyncAt || null,
+    lastSync: tok.lastSync || null,
+  };
+}
+
+// Remember how the last scrape went.
+async function recordSync(summary) {
+  await GmailToken.updateOne({}, { lastSyncAt: new Date(), lastSync: summary });
+}
+
+// Forget the stored refresh token (the user can reconnect any time).
+async function disconnect() {
+  await GmailToken.deleteMany({});
+}
+
+// Google rejects the stored refresh token (revoked, or expired while the OAuth
+// app is in "testing" mode) — the user has to go through consent again.
+function isAuthError(err) {
+  const msg = `${err?.response?.data?.error || ''} ${err?.message || ''}`;
+  return /invalid_grant|invalid_client|unauthorized_client|not connected/i.test(msg);
 }
 
 async function authorizedClient() {
@@ -105,8 +129,8 @@ function normalizeMessage(msg) {
   };
 }
 
-// Fetch BookMyShow booking emails (paginated, capped).
-async function fetchBmsEmails({ maxResults = 250, query } = {}) {
+// List the ids of every email matching the query (newest first, paginated, capped).
+async function listBmsEmailIds({ maxResults = 2000, query } = {}) {
   const auth = await authorizedClient();
   const gmail = google.gmail({ version: 'v1', auth });
   const q = query || BMS_QUERY;
@@ -118,15 +142,33 @@ async function fetchBmsEmails({ maxResults = 250, query } = {}) {
     (data.messages || []).forEach(m => ids.push(m.id));
     pageToken = data.nextPageToken;
   } while (pageToken && ids.length < maxResults);
-
-  const messages = [];
-  for (const id of ids.slice(0, maxResults)) {
-    try {
-      const { data } = await gmail.users.messages.get({ userId: 'me', id, format: 'full' });
-      messages.push(normalizeMessage(data));
-    } catch { /* skip unreadable message */ }
-  }
-  return messages;
+  return ids.slice(0, maxResults);
 }
 
-module.exports = { getAuthUrl, handleCallback, getStatus, fetchBmsEmails, BMS_QUERY };
+// Download + normalise the given messages, a few at a time.
+async function fetchMessages(ids, { concurrency = 8 } = {}) {
+  const auth = await authorizedClient();
+  const gmail = google.gmail({ version: 'v1', auth });
+
+  const messages = [];
+  let failed = 0;
+  for (let i = 0; i < ids.length; i += concurrency) {
+    const batch = await Promise.all(ids.slice(i, i + concurrency).map(async id => {
+      try {
+        const { data } = await gmail.users.messages.get({ userId: 'me', id, format: 'full' });
+        return normalizeMessage(data);
+      } catch (err) {
+        if (isAuthError(err)) throw err;
+        failed += 1;
+        return null; // unreadable message — counted, not fatal
+      }
+    }));
+    batch.forEach(m => { if (m) messages.push(m); });
+  }
+  return { messages, failed };
+}
+
+module.exports = {
+  getAuthUrl, handleCallback, getStatus, recordSync, disconnect, isAuthError,
+  listBmsEmailIds, fetchMessages, BMS_QUERY,
+};

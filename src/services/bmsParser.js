@@ -8,6 +8,16 @@
 
 const MONTHS = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11 };
 
+// Non-movie BMS bookings (plays, concerts, live events) aren't cinema spend, so they are
+// skipped entirely. They also use a template with no "<movie> / <showtime> / <cinema>" block,
+// which made parseMovieVenue fall back to the date line as the title. Identified by the
+// booking-reference prefix — JPAC is a performing-arts venue. Add prefixes here as they appear.
+const NON_MOVIE_BOOKING_RE = /^(?:JPAC)/;
+
+function isNonMovieEvent(bookingId) {
+  return !!bookingId && NON_MOVIE_BOOKING_RE.test(bookingId);
+}
+
 function htmlToText(html) {
   return html
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
@@ -71,7 +81,8 @@ function parseShowDate(text) {
 function parseBookingId(text) {
   // Labelled form: "Booking ID / Booking Ref / Booking No : PRCC0000694061"
   let m = text.match(/booking\s*(?:id|ref(?:erence)?|no\.?)?\s*[:\-#]?\s*([A-Z]{2,}[A-Z0-9]{4,})/i);
-  if (m) return m[1].toUpperCase();
+  // A real reference always carries digits — this rejects words like "Booking REFUND".
+  if (m && /\d/.test(m[1])) return m[1].toUpperCase();
   // Fallback: a bare BMS reference token (letters + 8+ digits, e.g. PRCC0000694061)
   // anywhere in the email. Refund/cancellation emails often drop the "Booking ID"
   // label but still quote the reference, so this is what lets a refund match its booking.
@@ -152,6 +163,24 @@ function getBookingId(msg) {
   return parseBookingId(messageText(msg));
 }
 
+// "Show Cancellation - <Movie> - BookMyShow" emails (the theatre cancelled the show)
+// quote no booking reference, only:
+//   Your <Movie> booking on Thu May 14 2026 12:00 PM was cancelled.
+// Returns { movieTitle, showDate } so the booking can be matched by title + show day.
+function parseShowCancellation(msg) {
+  const text = messageText(msg);
+  const m = text.match(
+    /your\s+(.+?)\s+booking\s+on\s+(?:[A-Za-z]{3,9},?\s+)?([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(\d{4})[^.]*?was\s+cancell?ed/i
+  );
+  if (!m) return null;
+  const mon = MONTHS[m[2].slice(0, 3).toLowerCase()];
+  if (mon == null) return null;
+  return {
+    movieTitle: m[1].trim(),
+    showDate: new Date(Date.UTC(Number(m[4]), mon, Number(m[3]))), // midnight UTC of the show day
+  };
+}
+
 function parseBmsEmail(msg) {
   // Never treat a cancellation/refund email as a booking.
   if (isCancellation(msg)) return null;
@@ -159,6 +188,9 @@ function parseBmsEmail(msg) {
   const text = messageText(msg);
   const haystack = `${msg.subject}\n${text}`;
   const bookingId = parseBookingId(text);
+
+  // Plays/concerts/events are not movie visits — leave them out of spend.
+  if (isNonMovieEvent(bookingId)) return null;
 
   let amount = parseLabelledAmount(haystack);
   if (amount == null && isBookingEmail(haystack, bookingId)) amount = parseMaxAmount(haystack);
@@ -183,4 +215,7 @@ function parseBmsEmail(msg) {
   };
 }
 
-module.exports = { parseBmsEmail, htmlToText, isCancellation, getBookingId };
+module.exports = {
+  parseBmsEmail, htmlToText, isCancellation, getBookingId, parseShowCancellation,
+  isNonMovieEvent, NON_MOVIE_BOOKING_RE,
+};

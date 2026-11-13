@@ -3,23 +3,19 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 
-const moviesRouter = require('./routes/movies');
-const logsRouter = require('./routes/logs');
-const proxyRouter = require('./routes/proxy');
-const watchlistRouter = require('./routes/watchlist');
 const spendRouter = require('./routes/spend');
+const requirePasscode = require('./middleware/passcode');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Behind Render's proxy, so req.ip is the real client (used by the passcode lockout).
+app.set('trust proxy', 1);
+
 app.use(cors());
 app.use(express.json());
 
-app.use('/api/movies', moviesRouter);
-app.use('/api/logs', logsRouter);
-app.use('/api/proxy', proxyRouter);
-app.use('/api/watchlist', watchlistRouter);
-app.use('/api/spend', spendRouter);
+app.use('/api/spend', requirePasscode, spendRouter);
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
@@ -27,6 +23,7 @@ mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('MongoDB connected');
+    if (!process.env.APP_PASSCODE) console.warn('APP_PASSCODE is not set — the API is open to anyone who can reach it.');
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   })
   .catch(err => {
