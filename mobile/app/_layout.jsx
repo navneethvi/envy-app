@@ -5,6 +5,7 @@ import { useFonts, BebasNeue_400Regular } from '@expo-google-fonts/bebas-neue';
 import * as SplashScreen from 'expo-splash-screen';
 import { ThemeProvider } from '../lib/theme';
 import { BookingsProvider } from '../lib/bookings';
+import { PrivacyProvider } from '../lib/privacy';
 import { C } from '../lib/tokens';
 import TabBar from '../components/TabBar';
 import PasscodeGate from '../components/PasscodeGate';
@@ -22,6 +23,7 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
+      <PrivacyProvider>
       <BookingsProvider>
         <StatusBar style="light" />
         <Tabs
@@ -33,6 +35,7 @@ export default function RootLayout() {
         </Tabs>
         <PasscodeGate />
       </BookingsProvider>
+      </PrivacyProvider>
     </ThemeProvider>
   );
 }

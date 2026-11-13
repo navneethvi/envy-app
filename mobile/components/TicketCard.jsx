@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 import { useTheme } from '../lib/theme';
 import { C, F } from '../lib/tokens';
-import { formatMoney } from '../lib/analytics';
+import { usePrivacy } from '../lib/privacy';
 import { frost } from './Glass';
 
 const STUB_W = 92;
@@ -12,6 +12,7 @@ const STUB_W = 92;
 // One booking, drawn as a frosted ticket: details on the left, a tear-off price stub on the right.
 function TicketCard({ item, onPress, showYear }) {
   const { theme } = useTheme();
+  const { money } = usePrivacy();
   const d = dayjs(item.date);
   const place = [item.theatre || 'Unknown theatre', item.screen].filter(Boolean).join(' · ');
 
@@ -50,7 +51,7 @@ function TicketCard({ item, onPress, showYear }) {
 
       <View style={st.stub}>
         <Text style={[st.amount, item.cancelled && st.struck]} numberOfLines={1} adjustsFontSizeToFit>
-          {formatMoney(item.amount)}
+          {money(item.amount)}
         </Text>
         {item.cancelled
           ? <Text style={[st.stubLabel, { color: C.warn }]}>REFUNDED</Text>

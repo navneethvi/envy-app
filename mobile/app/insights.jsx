@@ -5,10 +5,11 @@ import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 import { useBookings } from '../lib/bookings';
 import { useTheme } from '../lib/theme';
+import { usePrivacy } from '../lib/privacy';
 import { C, F, PAGE } from '../lib/tokens';
 import {
   summarize, yearsOf, inYear, byMonth, byYear, monthGrid, byWeekday, seatStats, monthStreaks,
-  paceProjection, formatMoney, formatMoneyCompact, formatMinutes, MONTH_SHORT,
+  paceProjection, formatMinutes, MONTH_SHORT,
 } from '../lib/analytics';
 import Loader from '../components/Loader';
 import TopBar from '../components/TopBar';
@@ -77,6 +78,7 @@ function Fact({ icon, label, value, sub, onPress }) {
 export default function InsightsScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
+  const { hidden, money, moneyCompact } = usePrivacy();
   const { visits, loading, reload } = useBookings();
 
   const [year, setYear] = useState(null);            // null = all time
@@ -129,11 +131,11 @@ export default function InsightsScreen() {
                   <Tile label="Bookings" value={s.bookings}>
                     <Delta cur={s.bookings} prev={prev?.bookings} prevLabel={year - 1} />
                   </Tile>
-                  <Tile label="Spent" value={formatMoney(s.total)}>
-                    <Delta cur={s.total} prev={prev?.total} prevLabel={year - 1} />
+                  <Tile label="Spent" value={money(s.total)}>
+                    {!hidden && <Delta cur={s.total} prev={prev?.total} prevLabel={year - 1} />}
                   </Tile>
-                  <Tile label="Per booking" value={formatMoney(s.avg)}>
-                    <Delta cur={s.avg} prev={prev?.avg} prevLabel={year - 1} />
+                  <Tile label="Per booking" value={money(s.avg)}>
+                    {!hidden && <Delta cur={s.avg} prev={prev?.avg} prevLabel={year - 1} />}
                   </Tile>
                 </View>
 
@@ -154,7 +156,7 @@ export default function InsightsScreen() {
                   <Columns
                     data={timeline}
                     field={metric}
-                    format={metric === 'spend' ? formatMoneyCompact : v => `${v}`}
+                    format={metric === 'spend' ? moneyCompact : v => `${v}`}
                     onSelect={d => open(d.name, d.items)}
                   />
                 </Card>
@@ -179,7 +181,7 @@ export default function InsightsScreen() {
                         <View style={st.track}>
                           <View style={[st.fill, { width: `${(t.visits / topTheatre.visits) * 100}%`, backgroundColor: theme.accent }]} />
                         </View>
-                        <Text style={st.rankSub}>{t.films} {t.films === 1 ? 'film' : 'films'} · {formatMoney(t.spend)}</Text>
+                        <Text style={st.rankSub}>{t.films} {t.films === 1 ? 'film' : 'films'} · {money(t.spend)}</Text>
                       </Pressable>
                     ))}
                   </Card>
@@ -196,7 +198,7 @@ export default function InsightsScreen() {
                 {seats && (
                   <Card title="Seats" note={`${seats.totalSeats} seats booked · ${scopeName}`}>
                     <View style={st.minis}>
-                      {seats.perSeat != null && <Mini value={formatMoney(seats.perSeat)} label="per seat" />}
+                      {seats.perSeat != null && <Mini value={money(seats.perSeat)} label="per seat" />}
                       <Mini value={seats.avgSeats.toFixed(1)} label="seats a booking" />
                       <Mini value={`${seats.soloPct}%`} label="solo trips" />
                     </View>
@@ -228,7 +230,7 @@ export default function InsightsScreen() {
                 <Card title="For the record">
                   <Fact icon="hourglass-outline" label="Time in the dark" value={formatMinutes(s.minutes)}
                     sub={s.knownRuntime < s.bookings ? `from the ${s.knownRuntime} of ${s.bookings} bookings with a known runtime` : `across ${s.bookings} bookings`} />
-                  <Fact icon="pricetag-outline" label="Priciest booking" value={`${formatMoney(s.priciest.amount)} · ${s.priciest.title}`}
+                  <Fact icon="pricetag-outline" label="Priciest booking" value={`${money(s.priciest.amount)} · ${s.priciest.title}`}
                     sub={dayjs(s.priciest.date).format('D MMM YYYY')} onPress={() => open('Priciest booking', [s.priciest])} />
                   {seats?.biggestGroup && seats.biggestGroup.seatN > 2 && (
                     <Fact icon="people-outline" label="Biggest group" value={`${seats.biggestGroup.seatN} seats · ${seats.biggestGroup.title}`}

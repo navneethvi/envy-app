@@ -2,11 +2,12 @@ import { ScrollView, View, Text } from 'react-native';
 import Sheet from './Sheet';
 import TicketCard from './TicketCard';
 import { C } from '../lib/tokens';
-import { formatMoney } from '../lib/analytics';
+import { usePrivacy } from '../lib/privacy';
 
 // "Show me the bookings behind this number" — used by every chart and ranking.
 // `data` is { title, items } or null.
 export default function ListSheet({ data, onClose }) {
+  const { money } = usePrivacy();
   const items = data?.items || [];
   const total = items.reduce((a, v) => a + v.amount, 0);
   return (
@@ -14,7 +15,7 @@ export default function ListSheet({ data, onClose }) {
       visible={!!data}
       onClose={onClose}
       title={data?.title}
-      subtitle={`${items.length} ${items.length === 1 ? 'booking' : 'bookings'} · ${formatMoney(total)}`}
+      subtitle={`${items.length} ${items.length === 1 ? 'booking' : 'bookings'} · ${money(total)}`}
     >
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 6 }}>
         {items.length === 0

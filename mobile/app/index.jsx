@@ -6,7 +6,8 @@ import dayjs from 'dayjs';
 import { useBookings } from '../lib/bookings';
 import { useTheme } from '../lib/theme';
 import { C, F, PAGE } from '../lib/tokens';
-import { groupByMonth, summarize, yearsOf, formatMoney } from '../lib/analytics';
+import { groupByMonth, summarize, yearsOf } from '../lib/analytics';
+import { usePrivacy } from '../lib/privacy';
 import Loader from '../components/Loader';
 import TopBar from '../components/TopBar';
 import Hero from '../components/Hero';
@@ -19,6 +20,7 @@ import Backdrop from '../components/Backdrop';
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
+  const { money } = usePrivacy();
   const { items, visits, gmail, loading, reload } = useBookings();
 
   const [query, setQuery] = useState('');
@@ -90,7 +92,7 @@ export default function HistoryScreen() {
 
           {isFiltered && (
             <Text style={st.resultLine}>
-              {live.length} {live.length === 1 ? 'booking' : 'bookings'} · {formatMoney(live.reduce((a, v) => a + v.amount, 0))}
+              {live.length} {live.length === 1 ? 'booking' : 'bookings'} · {money(live.reduce((a, v) => a + v.amount, 0))}
             </Text>
           )}
         </>
@@ -110,7 +112,7 @@ export default function HistoryScreen() {
             <Glass style={st.monthPill}><Text style={st.month}>{section.title}</Text></Glass>
             <Glass style={st.monthPill}>
               <Text style={st.monthMeta}>
-                {section.count ? `${section.count} · ${formatMoney(section.total)}` : 'refunded'}
+                {section.count ? `${section.count} · ${money(section.total)}` : 'refunded'}
               </Text>
             </Glass>
           </View>

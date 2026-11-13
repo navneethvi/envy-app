@@ -5,7 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 import { useTheme } from '../lib/theme';
 import { F } from '../lib/tokens';
-import { formatMoney, formatMinutes, timeAgo } from '../lib/analytics';
+import { formatMinutes, timeAgo } from '../lib/analytics';
+import { usePrivacy } from '../lib/privacy';
 
 const INK = 'rgba(11,11,15,0.92)';
 const INK_DIM = 'rgba(11,11,15,0.6)';
@@ -42,6 +43,7 @@ function Stat({ value, label }) {
 // The all-time summary, as a golden ticket in the active accent.
 export default function Hero({ stats, lastSyncAt }) {
   const { theme } = useTheme();
+  const { money } = usePrivacy();
   const total = useCountUp(stats.total);
 
   return (
@@ -50,8 +52,8 @@ export default function Hero({ stats, lastSyncAt }) {
 
       <View style={st.top}>
         <Text style={st.kicker}>ALL-TIME SPEND ON BOOKMYSHOW</Text>
-        <Text style={st.total} numberOfLines={1} adjustsFontSizeToFit>{formatMoney(total)}</Text>
-        <Text style={st.sub}>about {formatMoney(stats.avg)} a booking</Text>
+        <Text style={st.total} numberOfLines={1} adjustsFontSizeToFit>{money(total)}</Text>
+        <Text style={st.sub}>about {money(stats.avg)} a booking</Text>
       </View>
 
       <View style={st.tear}>

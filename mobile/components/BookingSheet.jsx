@@ -4,7 +4,8 @@ import dayjs from 'dayjs';
 import Sheet from './Sheet';
 import { useTheme } from '../lib/theme';
 import { C, F } from '../lib/tokens';
-import { formatMoney, formatMinutes } from '../lib/analytics';
+import { formatMinutes } from '../lib/analytics';
+import { usePrivacy } from '../lib/privacy';
 
 function Field({ label, value, wide }) {
   if (!value) return null;
@@ -19,6 +20,7 @@ function Field({ label, value, wide }) {
 // Everything the email told us about one booking.
 export default function BookingSheet({ item, timesBooked = 1, onClose }) {
   const { theme } = useTheme();
+  const { money } = usePrivacy();
   if (!item) return <Sheet visible={false} onClose={onClose} />;
   const d = dayjs(item.date);
   const tags = [item.format, item.language, item.runtime ? formatMinutes(item.runtime) : ''].filter(Boolean);
@@ -36,9 +38,9 @@ export default function BookingSheet({ item, timesBooked = 1, onClose }) {
             )}
             <Text style={st.title}>{item.title}</Text>
             {tags.length > 0 && <Text style={st.tags}>{tags.join('  ·  ')}</Text>}
-            <Text style={[st.amount, { color: theme.accent }]}>{formatMoney(item.amount)}</Text>
+            <Text style={[st.amount, { color: theme.accent }]}>{money(item.amount)}</Text>
             {item.perSeat != null && item.seatN > 1 && (
-              <Text style={st.perSeat}>{formatMoney(item.perSeat)} per seat</Text>
+              <Text style={st.perSeat}>{money(item.perSeat)} per seat</Text>
             )}
           </View>
         </View>
