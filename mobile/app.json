@@ -28,7 +28,7 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/favicon.png",
+      "favicon": "./assets/absolute-cinema.png",
       "name": "Envy",
       "shortName": "Envy",
       "themeColor": "#0B0B0F",
